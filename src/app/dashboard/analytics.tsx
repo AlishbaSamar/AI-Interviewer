@@ -29,23 +29,27 @@ export function Analytics({ sessions }: { sessions: InterviewSession[] }) {
 
   return (
     <div className="mt-8 grid gap-4 sm:grid-cols-2">
-      <div className="rounded-xl border border-black/10 bg-background p-5 dark:border-white/10">
-        <h3 className="text-sm font-medium text-foreground">Score trend</h3>
+      <div className="rounded-xl border border-ink-border bg-ink-surface p-5">
+        <h3 className="font-display text-sm font-medium text-ink-fg">
+          Score trend
+        </h3>
         <Sparkline scores={scores} />
       </div>
 
-      <div className="rounded-xl border border-black/10 bg-background p-5 dark:border-white/10">
-        <h3 className="text-sm font-medium text-foreground">Skill-wise average</h3>
+      <div className="rounded-xl border border-ink-border bg-ink-surface p-5">
+        <h3 className="font-display text-sm font-medium text-ink-fg">
+          Skill-wise average
+        </h3>
         <div className="mt-3 space-y-2.5">
           {averages.map(({ key, label, avg }) => (
             <div key={key}>
-              <div className="flex justify-between text-xs text-foreground/70">
+              <div className="flex justify-between text-xs text-ink-muted">
                 <span>{label}</span>
-                <span>{avg}/100</span>
+                <span className="font-mono">{avg}/100</span>
               </div>
-              <div className="mt-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10">
+              <div className="mt-1 h-1.5 rounded-full bg-ink-surface-2">
                 <div
-                  className="h-1.5 rounded-full bg-foreground"
+                  className="h-1.5 rounded-full bg-accent"
                   style={{ width: `${avg}%` }}
                 />
               </div>
@@ -54,11 +58,14 @@ export function Analytics({ sessions }: { sessions: InterviewSession[] }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-black/10 bg-background p-5 sm:col-span-2 dark:border-white/10">
-        <h3 className="text-sm font-medium text-foreground">Recommended focus</h3>
-        <p className="mt-1 text-sm text-foreground/70">
-          Your lowest-scoring area is <span className="font-medium text-foreground">{lowest.label}</span>{" "}
-          (average {lowest.avg}/100). Consider practicing another interview with this in mind.
+      <div className="rounded-xl border border-ink-border bg-ink-surface p-5 sm:col-span-2">
+        <h3 className="font-display text-sm font-medium text-ink-fg">
+          Recommended focus
+        </h3>
+        <p className="mt-1 text-sm text-ink-muted">
+          Your lowest-scoring area is{" "}
+          <span className="font-medium text-accent-violet">{lowest.label}</span> (average{" "}
+          {lowest.avg}/100). Consider practicing another interview with this in mind.
         </p>
       </div>
     </div>
@@ -68,7 +75,7 @@ export function Analytics({ sessions }: { sessions: InterviewSession[] }) {
 function Sparkline({ scores }: { scores: number[] }) {
   if (scores.length < 2) {
     return (
-      <p className="mt-3 text-sm text-foreground/50">
+      <p className="mt-3 text-sm text-ink-muted">
         Complete another scored interview to see your trend.
       </p>
     );
@@ -92,7 +99,7 @@ function Sparkline({ scores }: { scores: number[] }) {
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
-      className="mt-3 h-16 w-full text-foreground"
+      className="mt-3 h-16 w-full text-accent"
     >
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" />
     </svg>

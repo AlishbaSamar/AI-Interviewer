@@ -22,16 +22,21 @@ export default async function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <div className="mx-auto max-w-4xl">
-        <div className="rounded-xl border border-black/10 bg-background p-8 text-center shadow-sm dark:border-white/10">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Welcome, {user.name || user.email}
-          </h1>
-          <div className="mt-6 flex items-center justify-center gap-3">
+    <div className="min-h-screen bg-ink px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-medium tracking-tight text-ink-fg sm:text-3xl">
+              Welcome back, {user.name || user.email}
+            </h1>
+            <p className="mt-1 text-sm text-ink-muted">
+              Track your practice sessions and keep improving.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
             <Link
               href="/profile"
-              className="rounded-md border border-black/15 px-3 py-2 text-sm font-medium text-foreground dark:border-white/15"
+              className="rounded-md border border-ink-border px-3 py-2 text-sm font-medium text-ink-muted transition-colors hover:text-ink-fg"
             >
               Profile
             </Link>
@@ -39,19 +44,20 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-8 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">
+        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="font-display text-lg font-medium text-ink-fg">
             Your interviews
           </h2>
           <Link
             href="/interview/setup"
-            className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.02]"
           >
+            <span className="text-base leading-none">+</span>
             Start New Interview
           </Link>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           <SessionList sessions={sessions} />
         </div>
 

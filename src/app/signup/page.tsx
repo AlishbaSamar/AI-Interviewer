@@ -2,8 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { authClient } from "@/lib/auth-client";
+import {
+  AuthCard,
+  AuthDivider,
+  AuthError,
+  AuthField,
+  AuthFooterLink,
+  AuthHeading,
+  AuthLayout,
+  AuthSubmitButton,
+  GoogleButton,
+} from "@/components/auth-ui";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -36,89 +46,59 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-xl border border-black/10 bg-background p-8 shadow-sm dark:border-white/10">
-        <h1 className="text-2xl font-semibold text-foreground">Create your account</h1>
-        <p className="mt-1 text-sm text-foreground/60">
-          Sign up to get started.
-        </p>
+    <AuthLayout>
+      <AuthCard>
+        <AuthHeading title="Create your account" subtitle="Sign up to get started." />
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-foreground">
-              Name
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
-            />
-          </div>
+          <AuthField
+            id="name"
+            label="Name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            required
+          />
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-foreground">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
-            />
-          </div>
+          <AuthField
+            id="email"
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-              className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
-            />
-          </div>
+          <AuthField
+            id="password"
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          <AuthError>{error}</AuthError>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
-          >
-            {loading ? "Signing up..." : "Sign up"}
-          </button>
+          <AuthSubmitButton loading={loading} loadingLabel="Signing up...">
+            Sign up
+          </AuthSubmitButton>
         </form>
 
-        <div className="mt-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-          <span className="text-xs text-foreground/50">OR</span>
-          <div className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-        </div>
+        <AuthDivider />
 
-        <button
-          type="button"
-          onClick={handleGoogleSignIn}
-          className="mt-4 w-full rounded-md border border-black/15 px-3 py-2 text-sm font-medium text-foreground dark:border-white/15"
-        >
-          Continue with Google
-        </button>
+        <GoogleButton onClick={handleGoogleSignIn} />
 
-        <p className="mt-6 text-center text-sm text-foreground/60">
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-foreground underline">
-            Log in
-          </Link>
-        </p>
-      </div>
-    </div>
+        <AuthFooterLink
+          prompt="Already have an account?"
+          linkText="Log in"
+          href="/login"
+        />
+      </AuthCard>
+    </AuthLayout>
   );
 }

@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import Vapi from "@vapi-ai/web";
 import type { CreateAssistantDTO } from "@vapi-ai/web/dist/api";
 import type { InterviewSession } from "@/generated/prisma/client";
 import { buildInterviewPrompt, buildProgressTool, PROGRESS_TOOL_NAME } from "@/lib/interview-prompt";
 import { PARAMETER_LABELS, type InterviewFeedback } from "@/lib/interview-types";
+import { WaveformBars } from "@/components/waveform-bars";
 import {
   getInterviewFeedback,
   saveInterviewTranscript,
@@ -18,18 +20,24 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type FeedbackStatus = "idle" | "loading" | "loaded" | "error";
 
-const STATUS_LABEL: Record<Status, string> = {
-  idle: "Idle",
+/** Who the waveform + status text should represent right now. */
+type ActiveSpeaker = "idle" | "connecting" | "ai" | "user" | "ended";
+
+const STATUS_TEXT: Record<ActiveSpeaker, string> = {
+  idle: "Ready to begin",
   connecting: "Connecting...",
-  connected: "Connected",
-  ended: "Ended",
+  ai: "AI is speaking...",
+  user: "Listening...",
+  ended: "Call ended",
 };
 
 export function InterviewClient({ session }: { session: InterviewSession }) {
   const vapiRef = useRef<Vapi | null>(null);
   const transcriptRef = useRef<TranscriptLine[]>([]);
   const [status, setStatus] = useState<Status>("idle");
+  const [assistantSpeaking, setAssistantSpeaking] = useState(false);
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+  const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [error, setError] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState("");
@@ -81,8 +89,12 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
     vapi.on("call-end", () => {
       console.log("[vapi event] call-end");
       setStatus("ended");
+      setAssistantSpeaking(false);
       void saveTranscript();
     });
+
+    vapi.on("speech-start", () => setAssistantSpeaking(true));
+    vapi.on("speech-end", () => setAssistantSpeaking(false));
 
     vapi.on("message", (message) => {
       console.log("[vapi event] message", message);
@@ -120,6 +132,7 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
       console.error("[vapi event] error", err);
       setError(err?.message ?? "Something went wrong with the call.");
       setStatus("ended");
+      setAssistantSpeaking(false);
     });
 
     return () => {
@@ -138,6 +151,7 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
     setFeedbackError("");
     setCurrentQuestion(null);
     setIsMuted(false);
+    setAssistantSpeaking(false);
     setStatus("connecting");
 
     const { systemPrompt, firstMessage } = buildInterviewPrompt(session);
@@ -179,6 +193,7 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
   function handleEndCall() {
     vapiRef.current?.stop();
     setStatus("ended");
+    setAssistantSpeaking(false);
   }
 
   function handleTogglePause() {
@@ -210,196 +225,307 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
   const canStart = (status === "idle" || status === "ended") && Boolean(publicKey);
   const canEnd = status === "connecting" || status === "connected";
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg rounded-xl border border-black/10 bg-background p-8 shadow-sm dark:border-white/10">
-        <h1 className="text-2xl font-semibold text-foreground">
-          {session.interviewType} Interview
-        </h1>
-        <p className="mt-1 text-sm text-foreground/60">
-          {session.difficulty} difficulty · {session.numQuestions} questions ·{" "}
-          {session.mode}
-        </p>
+  const activeSpeaker: ActiveSpeaker =
+    status === "idle"
+      ? "idle"
+      : status === "connecting"
+        ? "connecting"
+        : status === "ended"
+          ? "ended"
+          : assistantSpeaking
+            ? "ai"
+            : "user";
 
-        <div className="mt-6 flex items-center gap-2">
-          <span
-            className={`h-2.5 w-2.5 rounded-full ${
-              status === "connected"
-                ? "bg-green-500"
-                : status === "connecting"
-                  ? "bg-yellow-500"
-                  : status === "ended"
-                    ? "bg-red-500"
-                    : "bg-foreground/30"
-            }`}
-          />
-          <span className="text-sm font-medium text-foreground">
-            {STATUS_LABEL[status]}
-            {isMuted && status === "connected" && " · Paused"}
-          </span>
-          {currentQuestion !== null && (
-            <span className="ml-auto text-sm text-foreground/50">
-              Question {currentQuestion} of {session.numQuestions}
-            </span>
+  function handlePrimaryAction() {
+    if (canEnd) {
+      handleEndCall();
+    } else if (canStart) {
+      void handleStartCall();
+    }
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-ink text-ink-fg">
+      <header className="px-6 pt-8">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+          <Link
+            href="/dashboard"
+            className="self-start font-mono text-xs text-ink-muted transition-colors hover:text-ink-fg sm:self-auto"
+          >
+            ← Dashboard
+          </Link>
+          <p className="text-center font-mono text-xs uppercase tracking-widest text-ink-muted">
+            {session.interviewType} · {session.difficulty} · {session.mode} mode
+          </p>
+          <span className="hidden w-16 sm:inline" aria-hidden="true" />
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center px-6 pb-16">
+        {/* Central focus area - the emotional center of the screen */}
+        <div className="flex w-full flex-1 flex-col items-center justify-center py-10">
+          <WaveformStage activeSpeaker={activeSpeaker} />
+
+          <p className="mt-8 text-center font-display text-2xl font-medium tracking-tight text-ink-fg sm:text-3xl">
+            {STATUS_TEXT[activeSpeaker]}
+          </p>
+
+          <div className="mt-3 flex min-h-5 items-center gap-3 font-mono text-xs text-ink-muted">
+            {isMuted && status === "connected" && <span>Muted</span>}
+            {currentQuestion !== null && status === "connected" && (
+              <span>
+                Question {currentQuestion} of {session.numQuestions}
+              </span>
+            )}
+          </div>
+
+          {(error || !publicKey) && (
+            <p className="mt-4 max-w-sm text-center text-sm text-red-400">
+              {error || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
+            </p>
           )}
+
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <button
+              type="button"
+              onClick={handlePrimaryAction}
+              disabled={!canStart && !canEnd}
+              className={`rounded-full px-10 py-4 text-base font-semibold transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 ${
+                canEnd
+                  ? "bg-red-500 text-white"
+                  : "bg-accent text-ink"
+              }`}
+            >
+              {canEnd ? "End Call" : "Start Call"}
+            </button>
+
+            {status === "connected" && (
+              <button
+                type="button"
+                onClick={handleTogglePause}
+                className="rounded-full border border-ink-border px-4 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:text-ink-fg"
+              >
+                {isMuted ? "Unmute mic" : "Mute mic"}
+              </button>
+            )}
+          </div>
         </div>
 
-        {(error || !publicKey) && (
-          <p className="mt-3 text-sm text-red-500">
-            {error || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
-          </p>
+        {/* Calm confirmation once the call has ended and the transcript is saved */}
+        {saveStatus === "saving" && (
+          <p className="text-sm text-ink-muted">Saving transcript...</p>
         )}
 
-        {saveStatus === "saving" && (
-          <p className="mt-3 text-sm text-foreground/60">Saving transcript...</p>
-        )}
-        {saveStatus === "saved" && (
-          <p className="mt-3 text-sm text-green-600">
-            Interview completed, transcript saved.
-          </p>
-        )}
         {saveStatus === "error" && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/30">
-            <p className="text-sm text-red-500">{saveError}</p>
-            <p className="mt-1 text-xs text-foreground/50">
+          <div className="w-full max-w-sm rounded-lg border border-red-500/25 bg-red-500/5 p-4 text-center">
+            <p className="text-sm text-red-400">{saveError}</p>
+            <p className="mt-1 text-xs text-ink-muted">
               Your transcript is still shown below and hasn&apos;t been lost.
             </p>
             <button
               type="button"
               onClick={() => void saveTranscript()}
-              className="mt-2 rounded-md border border-black/15 px-2.5 py-1 text-xs font-medium text-foreground dark:border-white/15"
+              className="mt-3 rounded-md border border-ink-border px-3 py-1.5 text-xs font-medium text-ink-fg"
             >
               Retry save
             </button>
           </div>
         )}
 
-        <div className="mt-4 flex gap-3">
-          <button
-            type="button"
-            onClick={handleStartCall}
-            disabled={!canStart}
-            className="flex-1 rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
-          >
-            Start Call
-          </button>
-          <button
-            type="button"
-            onClick={handleTogglePause}
-            disabled={status !== "connected"}
-            className="flex-1 rounded-md border border-black/15 px-3 py-2 text-sm font-medium text-foreground disabled:opacity-50 dark:border-white/15"
-          >
-            {isMuted ? "Resume" : "Pause"}
-          </button>
-          <button
-            type="button"
-            onClick={handleEndCall}
-            disabled={!canEnd}
-            className="flex-1 rounded-md border border-black/15 px-3 py-2 text-sm font-medium text-foreground disabled:opacity-50 dark:border-white/15"
-          >
-            End Call
-          </button>
-        </div>
-
-        <div className="mt-6">
-          <h2 className="text-sm font-medium text-foreground">Transcript</h2>
-          <div className="mt-2 h-64 overflow-y-auto rounded-md border border-black/10 bg-black/[0.02] p-3 text-sm dark:border-white/10 dark:bg-white/[0.02]">
-            {transcript.length === 0 ? (
-              <p className="text-foreground/40">
-                Nothing said yet. Start the call to begin.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {transcript.map((line, i) => (
-                  <li key={i}>
-                    <span className="font-medium text-foreground">
-                      {line.role === "assistant" ? "Interviewer" : "You"}:
-                    </span>{" "}
-                    <span className="text-foreground/80">{line.text}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
         {saveStatus === "saved" && (
-          <div className="mt-6 border-t border-black/10 pt-6 dark:border-white/10">
-            <h2 className="text-sm font-medium text-foreground">Feedback</h2>
+          <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-xl border border-ink-border bg-ink-surface px-6 py-6 text-center">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full border border-accent/40 text-accent">
+              <CheckIcon />
+            </span>
+            <p className="text-sm text-ink-fg">
+              Interview completed, transcript saved.
+            </p>
 
             {feedbackStatus === "idle" && (
               <button
                 type="button"
                 onClick={handleGetFeedback}
-                className="mt-3 w-full rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background"
+                className="rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink"
               >
                 Get Feedback
               </button>
             )}
 
             {feedbackStatus === "loading" && (
-              <p className="mt-3 text-sm text-foreground/60">
+              <p className="text-sm text-ink-muted">
                 Generating feedback... this may take a moment.
               </p>
             )}
 
             {feedbackStatus === "error" && (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/30">
-                <p className="text-sm text-red-500">{feedbackError}</p>
+              <div className="w-full rounded-md border border-red-500/25 bg-red-500/5 p-3">
+                <p className="text-sm text-red-400">{feedbackError}</p>
                 <button
                   type="button"
                   onClick={handleGetFeedback}
-                  className="mt-2 rounded-md border border-black/15 px-2.5 py-1 text-xs font-medium text-foreground dark:border-white/15"
+                  className="mt-2 rounded-md border border-ink-border px-2.5 py-1 text-xs font-medium text-ink-fg"
                 >
                   Retry
                 </button>
               </div>
             )}
-
-            {feedbackStatus === "loaded" && feedback && (
-              <div className="mt-4 space-y-5">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-semibold text-foreground">
-                    {feedback.overallScore}
-                  </span>
-                  <span className="text-sm text-foreground/50">/ 100 overall</span>
-                </div>
-
-                <div className="space-y-3">
-                  {PARAMETER_LABELS.map(({ key, label }) => (
-                    <div key={key}>
-                      <div className="flex justify-between text-xs text-foreground/70">
-                        <span>{label}</span>
-                        <span>{feedback.parameters[key]}/100</span>
-                      </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-black/10 dark:bg-white/10">
-                        <div
-                          className="h-1.5 rounded-full bg-foreground"
-                          style={{ width: `${feedback.parameters[key]}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <FeedbackList title="Strengths" items={feedback.strengths} />
-                <FeedbackList title="Weaknesses" items={feedback.weaknesses} />
-                <FeedbackList title="Suggestions" items={feedback.suggestions} />
-                <ExampleAnswers items={feedback.exampleAnswers} />
-
-                <a
-                  href={`/interview/${session.id}/report`}
-                  download={`interview-report-${session.id}.pdf`}
-                  className="block w-full rounded-md border border-black/15 px-3 py-2 text-center text-sm font-medium text-foreground dark:border-white/15"
-                >
-                  Download PDF Report
-                </a>
-              </div>
-            )}
           </div>
         )}
-      </div>
+
+        {/* Feedback results - reading content, kept plain and legible */}
+        {feedbackStatus === "loaded" && feedback && (
+          <div className="mt-10 w-full max-w-xl">
+            <div className="flex items-baseline justify-center gap-2">
+              <span className="font-display text-6xl font-medium text-ink-fg">
+                {feedback.overallScore}
+              </span>
+              <span className="text-sm text-ink-muted">/ 100 overall</span>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              {PARAMETER_LABELS.map(({ key, label }, i) => (
+                <div key={key}>
+                  <div className="flex justify-between text-xs text-ink-muted">
+                    <span>{label}</span>
+                    <span className="font-mono">{feedback.parameters[key]}/100</span>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded-full bg-ink-surface-2">
+                    <div
+                      className={`h-1.5 rounded-full ${i % 2 === 0 ? "bg-accent" : "bg-accent-violet"}`}
+                      style={{ width: `${feedback.parameters[key]}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 space-y-8 border-t border-ink-border pt-8">
+              <FeedbackList title="Strengths" items={feedback.strengths} />
+              <FeedbackList title="Weaknesses" items={feedback.weaknesses} />
+              <FeedbackList title="Suggestions" items={feedback.suggestions} />
+              <ExampleAnswers items={feedback.exampleAnswers} />
+            </div>
+
+            <a
+              href={`/interview/${session.id}/report`}
+              download={`interview-report-${session.id}.pdf`}
+              className="mt-8 block w-full rounded-md border border-ink-border px-3 py-2.5 text-center text-sm font-medium text-ink-fg transition-colors hover:border-ink-fg/40"
+            >
+              Download PDF Report
+            </a>
+          </div>
+        )}
+
+        {/* Transcript - collapsed by default, never the visual focus */}
+        <div className="mt-12 w-full max-w-xl">
+          <button
+            type="button"
+            onClick={() => setTranscriptOpen((v) => !v)}
+            className="flex w-full items-center justify-between rounded-lg border border-ink-border bg-ink-surface px-4 py-3 text-left"
+          >
+            <span className="text-sm font-medium text-ink-fg">
+              Transcript
+              {transcript.length > 0 && (
+                <span className="ml-2 font-mono text-xs text-ink-muted">
+                  {transcript.length}
+                </span>
+              )}
+            </span>
+            <span
+              className={`text-ink-muted transition-transform motion-safe:duration-200 ${transcriptOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </button>
+
+          {transcriptOpen && (
+            <div className="mt-2 max-h-72 overflow-y-auto rounded-lg border border-ink-border bg-ink-surface/60 p-4 text-sm">
+              {transcript.length === 0 ? (
+                <p className="text-ink-muted">
+                  Nothing said yet. Start the call to begin.
+                </p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {transcript.map((line, i) => (
+                    <li key={i}>
+                      <span className="font-medium text-ink-fg">
+                        {line.role === "assistant" ? "Interviewer" : "You"}:
+                      </span>{" "}
+                      <span className="text-ink-muted">{line.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
     </div>
+  );
+}
+
+function WaveformStage({ activeSpeaker }: { activeSpeaker: ActiveSpeaker }) {
+  const config = {
+    idle: { active: false, sync: false, speed: 1, barClassName: "bg-ink-border", glow: "" },
+    connecting: {
+      active: true,
+      sync: true,
+      speed: 2.6,
+      barClassName: "bg-accent/45",
+      glow: "bg-accent/10",
+    },
+    ai: {
+      active: true,
+      sync: false,
+      speed: 0.6,
+      barClassName: "bg-accent",
+      glow: "bg-accent/20",
+    },
+    user: {
+      active: true,
+      sync: false,
+      speed: 0.6,
+      barClassName: "bg-accent-violet",
+      glow: "bg-accent-violet/20",
+    },
+    ended: { active: false, sync: false, speed: 1, barClassName: "bg-ink-border", glow: "" },
+  }[activeSpeaker];
+
+  return (
+    <div className="relative flex h-56 w-full max-w-md items-center justify-center sm:h-64">
+      {config.glow && (
+        <div
+          aria-hidden="true"
+          className={`absolute h-40 w-40 rounded-full blur-3xl transition-colors motion-safe:duration-500 ${config.glow}`}
+        />
+      )}
+      <WaveformBars
+        count={28}
+        seed={7}
+        minHeight={10}
+        active={config.active}
+        sync={config.sync}
+        speed={config.speed}
+        flatHeight={12}
+        className="relative flex h-32 w-full items-end justify-center gap-1.5 px-2 sm:h-40"
+        barClassName={`min-w-0 flex-1 max-w-2 rounded-full transition-colors motion-safe:duration-300 ${config.barClassName}`}
+      />
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+      <path
+        d="M5 12.5l4.5 4.5L19 7"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -408,10 +534,10 @@ function FeedbackList({ title, items }: { title: string; items: string[] }) {
 
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+      <h3 className="font-mono text-xs uppercase tracking-widest text-ink-muted">
         {title}
       </h3>
-      <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-foreground/80">
+      <ul className="mt-2 list-inside list-disc space-y-1.5 text-sm leading-relaxed text-ink-fg/90">
         {items.map((item, i) => (
           <li key={i}>{item}</li>
         ))}
@@ -429,17 +555,16 @@ function ExampleAnswers({
 
   return (
     <div>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+      <h3 className="font-mono text-xs uppercase tracking-widest text-ink-muted">
         Example Answers
       </h3>
-      <div className="mt-1.5 space-y-3">
+      <div className="mt-2 space-y-4">
         {items.map((item, i) => (
-          <div
-            key={i}
-            className="rounded-md border border-black/10 p-3 dark:border-white/10"
-          >
-            <p className="text-sm font-medium text-foreground">{item.question}</p>
-            <p className="mt-1 text-sm text-foreground/70">{item.modelAnswer}</p>
+          <div key={i}>
+            <p className="text-sm font-medium text-ink-fg">{item.question}</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-muted">
+              {item.modelAnswer}
+            </p>
           </div>
         ))}
       </div>

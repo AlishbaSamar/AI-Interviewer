@@ -43,16 +43,16 @@ export function OnboardingConfirm() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-foreground">
+      <h1 className="font-display text-2xl font-medium tracking-tight text-ink-fg">
         Review your details
       </h1>
-      <p className="mt-1 text-sm text-foreground/60">
+      <p className="mt-1 text-sm text-ink-muted">
         Make sure this looks right before continuing.
       </p>
 
       <div className="mt-6 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-foreground">
+          <label className="block text-sm font-medium text-ink-fg">
             Interview type
           </label>
           <select
@@ -60,7 +60,7 @@ export function OnboardingConfirm() {
             onChange={(e) =>
               updateProfileDraft({ ...profileDraft, interviewType: e.target.value })
             }
-            className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
+            className="mt-1.5 w-full rounded-md border border-ink-border bg-ink-surface-2 px-3 py-2.5 text-sm text-ink-fg outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25"
           >
             {INTERVIEW_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -79,9 +79,7 @@ export function OnboardingConfirm() {
           ] as const
         ).map(([key, label]) => (
           <div key={key}>
-            <label className="block text-sm font-medium text-foreground">
-              {label}
-            </label>
+            <label className="block text-sm font-medium text-ink-fg">{label}</label>
             <input
               type="text"
               value={profileDraft[key] ?? ""}
@@ -92,13 +90,13 @@ export function OnboardingConfirm() {
                 })
               }
               placeholder="Optional"
-              className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
+              className="mt-1.5 w-full rounded-md border border-ink-border bg-ink-surface-2 px-3 py-2.5 text-sm text-ink-fg outline-none transition-colors placeholder:text-ink-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/25"
             />
           </div>
         ))}
 
         <div>
-          <label className="block text-sm font-medium text-foreground">
+          <label className="block text-sm font-medium text-ink-fg">
             Resume (optional)
           </label>
           <input
@@ -106,14 +104,18 @@ export function OnboardingConfirm() {
             accept=".pdf,.doc,.docx"
             onChange={handleFileChange}
             disabled={uploading}
-            className="mt-1 w-full text-sm text-foreground/70 file:mr-3 file:rounded-md file:border file:border-black/15 file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground dark:file:border-white/15"
+            className="mt-1.5 w-full text-sm text-ink-muted file:mr-3 file:rounded-md file:border file:border-ink-border file:bg-ink-surface-2 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink-fg disabled:opacity-50"
           />
           {uploading && (
-            <p className="mt-1 text-xs text-foreground/50">Uploading {fileName}...</p>
+            <p className="mt-1.5 text-xs text-ink-muted">Uploading {fileName}...</p>
           )}
-          {uploadError && <p className="mt-1 text-xs text-red-500">{uploadError}</p>}
+          {uploadError && (
+            <p role="alert" className="mt-1.5 text-xs text-red-400">
+              {uploadError}
+            </p>
+          )}
           {resumeUrl && !uploading && (
-            <p className="mt-1 text-xs text-green-600">Resume uploaded.</p>
+            <p className="mt-1.5 text-xs text-accent">Resume uploaded.</p>
           )}
         </div>
       </div>
@@ -121,7 +123,7 @@ export function OnboardingConfirm() {
       <button
         type="button"
         onClick={() => setStep("picker")}
-        className="mt-6 w-full rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background"
+        className="mt-6 w-full rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         Continue
       </button>

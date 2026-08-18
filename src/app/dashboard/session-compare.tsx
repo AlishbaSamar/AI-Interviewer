@@ -19,13 +19,13 @@ export function SessionCompare({
   if (!feedbackA || !feedbackB) return null;
 
   return (
-    <div className="mb-4 rounded-xl border border-black/10 bg-background p-5 dark:border-white/10">
+    <div className="mb-4 rounded-xl border border-accent/40 bg-ink-surface p-5">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Comparison</h3>
+        <h3 className="font-display text-sm font-medium text-ink-fg">Comparison</h3>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs font-medium text-foreground/60 underline"
+          className="text-xs font-medium text-ink-muted hover:text-ink-fg"
         >
           Clear
         </button>
@@ -36,11 +36,11 @@ export function SessionCompare({
           const feedback = i === 0 ? feedbackA : feedbackB;
           return (
             <div key={session.id}>
-              <p className="text-sm font-medium text-foreground">{session.interviewType}</p>
-              <p className="text-xs text-foreground/50">{formatDate(session.createdAt)}</p>
-              <p className="mt-1 text-2xl font-semibold text-foreground">
+              <p className="text-sm font-medium text-ink-fg">{session.interviewType}</p>
+              <p className="font-mono text-xs text-ink-muted">{formatDate(session.createdAt)}</p>
+              <p className="mt-1 text-2xl font-semibold text-accent">
                 {feedback.overallScore}
-                <span className="text-xs font-normal text-foreground/50"> / 100</span>
+                <span className="text-xs font-normal text-ink-muted"> / 100</span>
               </p>
             </div>
           );
@@ -50,11 +50,11 @@ export function SessionCompare({
       <div className="mt-4 space-y-2">
         {PARAMETER_LABELS.map(({ key, label }) => (
           <div key={key} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 text-xs">
-            <span className="text-foreground/70">{label}</span>
-            <span className="w-10 text-right font-medium text-foreground">
+            <span className="text-ink-muted">{label}</span>
+            <span className="w-10 text-right font-mono font-medium text-ink-fg">
               {feedbackA.parameters[key]}
             </span>
-            <span className="w-10 text-right font-medium text-foreground">
+            <span className="w-10 text-right font-mono font-medium text-ink-fg">
               {feedbackB.parameters[key]}
             </span>
           </div>

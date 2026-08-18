@@ -11,8 +11,8 @@ export default async function InterviewSetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg rounded-xl border border-black/10 bg-background p-8 shadow-sm dark:border-white/10">
+    <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-12">
+      <div className="w-full max-w-lg rounded-2xl border border-ink-border bg-ink-surface p-6 sm:p-8">
         <OnboardingWizard />
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { InterviewSession } from "@/generated/prisma/client";
 import { isValidFeedback } from "@/lib/evaluate-interview";
+import { WaveformBars } from "@/components/waveform-bars";
 import { SessionCompare } from "./session-compare";
 
 export function formatDate(date: Date): string {
@@ -21,21 +22,40 @@ function formatStatus(status: string): string {
     .join(" ");
 }
 
-function statusBadgeClass(status: string): string {
+function statusDotClass(status: string): string {
   switch (status) {
     case "completed":
-      return "bg-green-500/10 text-green-600 dark:text-green-400";
+      return "bg-accent";
     case "in_progress":
-      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+      return "bg-accent-violet motion-safe:animate-[soft-pulse_1.6s_ease-in-out_infinite]";
     default:
-      return "bg-black/5 text-foreground/60 dark:bg-white/10";
+      return "bg-ink-muted";
   }
 }
 
-function scoreBadgeClass(score: number): string {
-  if (score >= 70) return "bg-green-500/10 text-green-600 dark:text-green-400";
-  if (score >= 40) return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400";
-  return "bg-red-500/10 text-red-600 dark:text-red-400";
+function scoreTierClass(score: number): string {
+  if (score >= 75) return "border-accent/50 text-accent";
+  if (score >= 50) return "border-accent-violet/50 text-accent-violet";
+  return "border-ink-border text-ink-muted";
+}
+
+function ScoreBadge({ score }: { score: number }) {
+  return (
+    <div
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border font-mono text-sm font-semibold ${scoreTierClass(score)}`}
+      title={`Score: ${score}/100`}
+    >
+      {score}
+    </div>
+  );
+}
+
+function Pill({ children }: { children: string }) {
+  return (
+    <span className="rounded-full border border-ink-border px-2.5 py-1 text-xs text-ink-muted">
+      {children}
+    </span>
+  );
 }
 
 export function SessionList({ sessions }: { sessions: InterviewSession[] }) {
@@ -51,16 +71,28 @@ export function SessionList({ sessions }: { sessions: InterviewSession[] }) {
 
   if (sessions.length === 0) {
     return (
-      <div className="rounded-xl border border-black/10 bg-background p-10 text-center dark:border-white/10">
-        <p className="text-sm text-foreground/60">
-          You haven&apos;t taken any interviews yet.
-        </p>
-        <Link
-          href="/interview/setup"
-          className="mt-4 inline-block rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background"
-        >
-          Start your first interview
-        </Link>
+      <div className="relative overflow-hidden rounded-xl border border-ink-border bg-ink-surface px-6 py-16 text-center">
+        <WaveformBars
+          count={40}
+          seed={5}
+          minHeight={10}
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex h-28 items-end justify-center gap-[6px] px-4 opacity-[0.08] [mask-image:linear-gradient(to_top,black,transparent)]"
+          barClassName="w-[3px] flex-1 max-w-[6px] rounded-full bg-gradient-to-t from-accent to-accent-violet"
+        />
+        <div className="relative">
+          <p className="font-display text-lg font-medium text-ink-fg">
+            No interviews yet
+          </p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Start a live voice session to get your first score.
+          </p>
+          <Link
+            href="/interview/setup"
+            className="mt-6 inline-flex items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-ink transition-transform hover:scale-[1.02]"
+          >
+            Start your first interview
+          </Link>
+        </div>
       </div>
     );
   }
@@ -73,97 +105,73 @@ export function SessionList({ sessions }: { sessions: InterviewSession[] }) {
         <SessionCompare sessions={selectedSessions} onClose={() => setSelectedIds([])} />
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
-        <table className="w-full min-w-[760px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-black/10 text-xs uppercase text-foreground/50 dark:border-white/10">
-              <th className="w-8 px-4 py-3 font-medium"></th>
-              <th className="px-4 py-3 font-medium">Type</th>
-              <th className="px-4 py-3 font-medium">Domain</th>
-              <th className="px-4 py-3 font-medium">Difficulty</th>
-              <th className="px-4 py-3 font-medium">Mode</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Score</th>
-              <th className="px-4 py-3 font-medium">Date</th>
-              <th className="px-4 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((session) => {
-              const feedback = isValidFeedback(session.feedback) ? session.feedback : null;
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {sessions.map((session) => {
+          const feedback = isValidFeedback(session.feedback) ? session.feedback : null;
+          const isSelected = selectedIds.includes(session.id);
 
-              return (
-                <tr
-                  key={session.id}
-                  className="border-b border-black/5 last:border-b-0 dark:border-white/5"
-                >
-                  <td className="px-4 py-3">
-                    {feedback && (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(session.id)}
-                        onChange={() => toggleSelect(session.id)}
-                        aria-label={`Select ${session.interviewType} interview from ${formatDate(session.createdAt)} for comparison`}
-                      />
-                    )}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-foreground">
-                    {session.interviewType}
-                  </td>
-                  <td className="px-4 py-3 text-foreground/70">
-                    {session.domain || "—"}
-                  </td>
-                  <td className="px-4 py-3 text-foreground/70">{session.difficulty}</td>
-                  <td className="px-4 py-3 text-foreground/70">{session.mode}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(
-                        session.status
-                      )}`}
-                    >
-                      {formatStatus(session.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {feedback ? (
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${scoreBadgeClass(
-                          feedback.overallScore
-                        )}`}
-                      >
-                        {feedback.overallScore}
-                      </span>
-                    ) : (
-                      <span className="text-foreground/40">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-foreground/70">
-                    {formatDate(session.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      {feedback && (
-                        <a
-                          href={`/interview/${session.id}/report`}
-                          download={`interview-report-${session.id}.pdf`}
-                          className="rounded-md border border-black/15 px-3 py-1.5 text-xs font-medium text-foreground dark:border-white/15"
-                        >
-                          Report
-                        </a>
-                      )}
-                      <Link
-                        href={`/interview/${session.id}`}
-                        className="rounded-md border border-black/15 px-3 py-1.5 text-xs font-medium text-foreground dark:border-white/15"
-                      >
-                        View
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+          return (
+            <div
+              key={session.id}
+              className={`group relative rounded-xl border bg-ink-surface p-5 transition-[transform,border-color] duration-200 motion-reduce:transition-none hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 ${
+                isSelected ? "border-accent/60" : "border-ink-border hover:border-accent/40"
+              }`}
+            >
+              <Link
+                href={`/interview/${session.id}`}
+                className="absolute inset-0 z-10 rounded-xl"
+                aria-label={`Open ${session.interviewType} interview from ${formatDate(session.createdAt)}`}
+              />
+
+              <div className="relative flex items-start justify-between gap-3">
+                <h3 className="font-display text-base font-medium leading-snug text-ink-fg">
+                  {session.interviewType}
+                </h3>
+                {feedback && <ScoreBadge score={feedback.overallScore} />}
+              </div>
+
+              <div className="relative mt-3 flex flex-wrap gap-1.5">
+                {session.domain && <Pill>{session.domain}</Pill>}
+                <Pill>{session.difficulty}</Pill>
+                <Pill>{session.mode}</Pill>
+              </div>
+
+              <div className="relative mt-5 flex items-center justify-between border-t border-ink-border pt-3">
+                <span className="flex items-center gap-2 text-xs text-ink-muted">
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusDotClass(session.status)}`} />
+                  {formatStatus(session.status)}
+                </span>
+                <span className="font-mono text-xs text-ink-muted">
+                  {formatDate(session.createdAt)}
+                </span>
+              </div>
+
+              {feedback && (
+                <div className="relative z-20 mt-3 flex items-center justify-between border-t border-ink-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleSelect(session.id)}
+                    aria-pressed={isSelected}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                      isSelected
+                        ? "border-accent bg-accent/10 text-accent"
+                        : "border-ink-border text-ink-muted hover:text-ink-fg"
+                    }`}
+                  >
+                    {isSelected ? "Selected" : "Compare"}
+                  </button>
+                  <a
+                    href={`/interview/${session.id}/report`}
+                    download={`interview-report-${session.id}.pdf`}
+                    className="text-xs font-medium text-ink-muted hover:text-ink-fg"
+                  >
+                    Report
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

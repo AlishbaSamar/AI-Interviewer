@@ -21,8 +21,8 @@ export default async function InterviewSessionPage(
 
   if (!interviewSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <p className="text-sm text-foreground/60">Interview session not found.</p>
+      <div className="flex min-h-screen items-center justify-center bg-ink px-4">
+        <p className="text-sm text-ink-muted">Interview session not found.</p>
       </div>
     );
   }

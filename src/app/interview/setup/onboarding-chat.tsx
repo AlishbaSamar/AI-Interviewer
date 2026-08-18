@@ -46,16 +46,16 @@ export function OnboardingChat() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-foreground">
+      <h1 className="font-display text-2xl font-medium tracking-tight text-ink-fg">
         Let&apos;s set up your interview
       </h1>
-      <p className="mt-1 text-sm text-foreground/60">
+      <p className="mt-1 text-sm text-ink-muted">
         Tell me a bit about what you&apos;d like to practice.
       </p>
 
-      <div className="mt-6 h-80 space-y-3 overflow-y-auto rounded-md border border-black/10 bg-black/[0.02] p-3 dark:border-white/10 dark:bg-white/[0.02]">
+      <div className="mt-6 h-80 space-y-3 overflow-y-auto rounded-lg border border-ink-border bg-ink-surface-2 p-3">
         {messages.length === 0 && (
-          <p className="text-sm text-foreground/40">
+          <p className="text-sm text-ink-muted">
             Say hello to get started - e.g. &quot;I want to practice a coding
             interview for a frontend role.&quot;
           </p>
@@ -63,21 +63,23 @@ export function OnboardingChat() {
         {messages.map((m, i) => (
           <div
             key={i}
-            className={`max-w-[85%] rounded-md px-3 py-2 text-sm ${
+            className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
               m.role === "user"
-                ? "ml-auto bg-foreground text-background"
-                : "bg-background text-foreground border border-black/10 dark:border-white/10"
+                ? "ml-auto bg-accent text-ink"
+                : "border border-ink-border bg-ink text-ink-fg"
             }`}
           >
             {m.text}
           </div>
         ))}
-        {sending && (
-          <p className="text-sm text-foreground/40">Thinking...</p>
-        )}
+        {sending && <p className="text-sm text-ink-muted">Thinking...</p>}
       </div>
 
-      {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
+          {error}
+        </p>
+      )}
 
       <form onSubmit={handleSend} className="mt-3 flex gap-2">
         <input
@@ -86,12 +88,12 @@ export function OnboardingChat() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message..."
           disabled={sending}
-          className="flex-1 rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 disabled:opacity-50 dark:border-white/15"
+          className="flex-1 rounded-md border border-ink-border bg-ink-surface-2 px-3 py-2 text-sm text-ink-fg outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/25 disabled:opacity-50"
         />
         <button
           type="submit"
           disabled={sending || !input.trim()}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-50"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Send
         </button>
@@ -101,7 +103,7 @@ export function OnboardingChat() {
         <button
           type="button"
           onClick={skipToConfirm}
-          className="mt-3 text-sm text-foreground/60 underline"
+          className="mt-3 rounded text-sm font-medium text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
         >
           Skip to manual setup
         </button>
