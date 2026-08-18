@@ -4,11 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Vapi from "@vapi-ai/web";
 import type { CreateAssistantDTO } from "@vapi-ai/web/dist/api";
 import type { InterviewSession } from "@/generated/prisma/client";
-import { buildInterviewPrompt } from "@/lib/interview-prompt";
+import { buildInterviewPrompt, buildProgressTool, PROGRESS_TOOL_NAME } from "@/lib/interview-prompt";
+import { PARAMETER_LABELS, type InterviewFeedback } from "@/lib/interview-types";
 import {
   getInterviewFeedback,
   saveInterviewTranscript,
-  type InterviewFeedback,
   type TranscriptLine,
 } from "./actions";
 
@@ -17,14 +17,6 @@ type Status = "idle" | "connecting" | "connected" | "ended";
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 type FeedbackStatus = "idle" | "loading" | "loaded" | "error";
-
-const PARAMETER_LABELS: { key: keyof InterviewFeedback["parameters"]; label: string }[] = [
-  { key: "technicalAccuracy", label: "Technical Accuracy" },
-  { key: "communication", label: "Communication" },
-  { key: "clarity", label: "Clarity" },
-  { key: "confidence", label: "Confidence" },
-  { key: "structure", label: "Structure" },
-];
 
 const STATUS_LABEL: Record<Status, string> = {
   idle: "Idle",
@@ -44,6 +36,8 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatus>("idle");
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
   const [feedbackError, setFeedbackError] = useState("");
+  const [currentQuestion, setCurrentQuestion] = useState<number | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
 
   const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY;
 
@@ -98,6 +92,28 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
           { role: message.role, text: message.transcript },
         ]);
       }
+
+      // Best-effort progress indicator - the interviewer model reports its
+      // question number via a client-observation-only tool call. If this
+      // never fires (e.g. the model doesn't call it), the UI just doesn't
+      // show a question count rather than breaking anything.
+      if (message?.type === "tool-calls" && Array.isArray(message.toolCallList)) {
+        for (const call of message.toolCallList) {
+          if (call?.function?.name !== PROGRESS_TOOL_NAME) continue;
+          try {
+            // Vapi's types say `arguments` is always a JSON string, but in
+            // practice the client SDK sometimes delivers it pre-parsed as an
+            // object - handle both.
+            const raw = call.function.arguments;
+            const args = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (typeof args?.questionNumber === "number") {
+              setCurrentQuestion(args.questionNumber);
+            }
+          } catch (err) {
+            console.error("[vapi] failed to parse progress tool arguments", err);
+          }
+        }
+      }
     });
 
     vapi.on("error", (err) => {
@@ -120,6 +136,8 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
     setFeedbackStatus("idle");
     setFeedback(null);
     setFeedbackError("");
+    setCurrentQuestion(null);
+    setIsMuted(false);
     setStatus("connecting");
 
     const { systemPrompt, firstMessage } = buildInterviewPrompt(session);
@@ -136,6 +154,7 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
         provider: "openai",
         model: "gpt-4.1",
         messages: [{ role: "system", content: systemPrompt }],
+        tools: [buildProgressTool(session.numQuestions)],
       },
       transcriber: {
         provider: "soniox",
@@ -160,6 +179,12 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
   function handleEndCall() {
     vapiRef.current?.stop();
     setStatus("ended");
+  }
+
+  function handleTogglePause() {
+    const next = !isMuted;
+    vapiRef.current?.setMuted(next);
+    setIsMuted(next);
   }
 
   async function handleGetFeedback() {
@@ -210,7 +235,13 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
           />
           <span className="text-sm font-medium text-foreground">
             {STATUS_LABEL[status]}
+            {isMuted && status === "connected" && " · Paused"}
           </span>
+          {currentQuestion !== null && (
+            <span className="ml-auto text-sm text-foreground/50">
+              Question {currentQuestion} of {session.numQuestions}
+            </span>
+          )}
         </div>
 
         {(error || !publicKey) && (
@@ -251,6 +282,14 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
             className="flex-1 rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
           >
             Start Call
+          </button>
+          <button
+            type="button"
+            onClick={handleTogglePause}
+            disabled={status !== "connected"}
+            className="flex-1 rounded-md border border-black/15 px-3 py-2 text-sm font-medium text-foreground disabled:opacity-50 dark:border-white/15"
+          >
+            {isMuted ? "Resume" : "Pause"}
           </button>
           <button
             type="button"
@@ -346,6 +385,15 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
                 <FeedbackList title="Strengths" items={feedback.strengths} />
                 <FeedbackList title="Weaknesses" items={feedback.weaknesses} />
                 <FeedbackList title="Suggestions" items={feedback.suggestions} />
+                <ExampleAnswers items={feedback.exampleAnswers} />
+
+                <a
+                  href={`/interview/${session.id}/report`}
+                  download={`interview-report-${session.id}.pdf`}
+                  className="block w-full rounded-md border border-black/15 px-3 py-2 text-center text-sm font-medium text-foreground dark:border-white/15"
+                >
+                  Download PDF Report
+                </a>
               </div>
             )}
           </div>
@@ -368,6 +416,33 @@ function FeedbackList({ title, items }: { title: string; items: string[] }) {
           <li key={i}>{item}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function ExampleAnswers({
+  items,
+}: {
+  items: InterviewFeedback["exampleAnswers"];
+}) {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div>
+      <h3 className="text-xs font-medium uppercase tracking-wide text-foreground/50">
+        Example Answers
+      </h3>
+      <div className="mt-1.5 space-y-3">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className="rounded-md border border-black/10 p-3 dark:border-white/10"
+          >
+            <p className="text-sm font-medium text-foreground">{item.question}</p>
+            <p className="mt-1 text-sm text-foreground/70">{item.modelAnswer}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

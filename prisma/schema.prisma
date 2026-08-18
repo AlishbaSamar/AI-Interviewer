@@ -83,6 +83,7 @@ model InterviewSession {
   difficulty      String
   mode            String
   status          String    @default("not_started")
+  resumeUrl       String?
   transcript      Json?
   feedback        Json?
   createdAt       DateTime  @default(now())

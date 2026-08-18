@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { InterviewFeedback, TranscriptLine } from "@/lib/interview-types";
+import { getLLMClient, LLM_MODEL } from "@/lib/llm-client";
 
 type EvaluationSessionMeta = {
   interviewType: string;
@@ -15,13 +16,6 @@ const PARAMETER_KEYS = [
   "structure",
 ] as const;
 
-function getClient(): OpenAI {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not set.");
-  }
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
-
 function stripCodeFences(text: string): string {
   const trimmed = text.trim();
   const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
@@ -34,6 +28,20 @@ function isScore(value: unknown): value is number {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isExampleAnswerArray(value: unknown): value is InterviewFeedback["exampleAnswers"] {
+  if (value === undefined) return true;
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        typeof (item as Record<string, unknown>).question === "string" &&
+        typeof (item as Record<string, unknown>).modelAnswer === "string"
+    )
+  );
 }
 
 export function isValidFeedback(value: unknown): value is InterviewFeedback {
@@ -49,6 +57,7 @@ export function isValidFeedback(value: unknown): value is InterviewFeedback {
   if (!isStringArray(v.strengths)) return false;
   if (!isStringArray(v.weaknesses)) return false;
   if (!isStringArray(v.suggestions)) return false;
+  if (!isExampleAnswerArray(v.exampleAnswers)) return false;
 
   return true;
 }
@@ -100,13 +109,18 @@ Evaluate the candidate's performance based only on the transcript above. Respond
   },
   "strengths": string[],
   "weaknesses": string[],
-  "suggestions": string[]
-}`;
+  "suggestions": string[],
+  "exampleAnswers": [
+    { "question": string, "modelAnswer": string }
+  ]
+}
+
+For exampleAnswers, pick 2-3 of the most significant questions from the transcript and write a strong model answer for each - something the candidate could learn from.`;
 }
 
 async function callModel(client: OpenAI, prompt: string): Promise<string> {
   const completion = await client.chat.completions.create({
-    model: "gpt-4.1",
+    model: LLM_MODEL,
     messages: [
       {
         role: "system",
@@ -134,7 +148,7 @@ export async function evaluateInterview(
     throw new Error("Cannot evaluate an interview with an empty transcript.");
   }
 
-  const client = getClient();
+  const client = getLLMClient();
   const prompt = buildEvaluationPrompt(transcript, sessionMeta);
 
   try {

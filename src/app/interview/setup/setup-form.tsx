@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-
-const QUESTION_COUNTS = [5, 10, 15] as const;
-const DIFFICULTIES = ["Easy", "Medium", "Hard"] as const;
-const MODES = [
-  { value: "Practice", label: "Practice Mode" },
-  { value: "Full Mock", label: "Full Mock Interview Mode" },
-] as const;
-const INTERVIEW_TYPES = ["Behavioral", "Coding", "System Design", "HR"] as const;
+import { QUESTION_COUNTS, DIFFICULTIES, MODES } from "@/lib/interview-options";
+import type { ProfileDraft } from "@/lib/onboarding-chat";
 
 function OptionButton({
   selected,
@@ -36,20 +30,48 @@ function OptionButton({
 
 export function SetupForm({
   action,
+  profile,
+  resumeUrl,
+  onBack,
 }: {
   action: (formData: FormData) => void;
+  profile: ProfileDraft;
+  resumeUrl: string | null;
+  onBack: () => void;
 }) {
   const [numQuestions, setNumQuestions] = useState<number>(10);
   const [difficulty, setDifficulty] = useState<string>("Medium");
   const [mode, setMode] = useState<string>("Practice");
-  const [interviewType, setInterviewType] = useState<string>("Behavioral");
 
   return (
     <form action={action} className="mt-6 space-y-6">
       <input type="hidden" name="numQuestions" value={numQuestions} />
       <input type="hidden" name="difficulty" value={difficulty} />
       <input type="hidden" name="mode" value={mode} />
-      <input type="hidden" name="interviewType" value={interviewType} />
+      <input type="hidden" name="interviewType" value={profile.interviewType} />
+      <input type="hidden" name="domain" value={profile.domain ?? ""} />
+      <input type="hidden" name="experienceLevel" value={profile.experienceLevel ?? ""} />
+      <input type="hidden" name="techStack" value={profile.techStack ?? ""} />
+      <input type="hidden" name="targetRole" value={profile.targetRole ?? ""} />
+      <input type="hidden" name="resumeUrl" value={resumeUrl ?? ""} />
+
+      <div className="flex items-start justify-between rounded-md border border-black/10 bg-black/[0.02] px-3 py-2 text-sm dark:border-white/10 dark:bg-white/[0.02]">
+        <div>
+          <p className="font-medium text-foreground">{profile.interviewType} interview</p>
+          <p className="mt-0.5 text-foreground/60">
+            {[profile.targetRole, profile.domain, profile.experienceLevel]
+              .filter(Boolean)
+              .join(" · ") || "No additional details"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="shrink-0 text-xs font-medium text-foreground/60 underline"
+        >
+          Edit
+        </button>
+      </div>
 
       <fieldset>
         <legend className="text-sm font-medium text-foreground">
@@ -93,23 +115,6 @@ export function SetupForm({
               onClick={() => setMode(m.value)}
             >
               {m.label}
-            </OptionButton>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend className="text-sm font-medium text-foreground">
-          Interview type
-        </legend>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {INTERVIEW_TYPES.map((type) => (
-            <OptionButton
-              key={type}
-              selected={interviewType === type}
-              onClick={() => setInterviewType(type)}
-            >
-              {type}
             </OptionButton>
           ))}
         </div>
