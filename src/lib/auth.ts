@@ -15,4 +15,14 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+      // This app has no email-verification flow, so local accounts never
+      // have emailVerified: true. Without this, Google sign-in can never
+      // link to an existing email/password account with the same email.
+      requireLocalEmailVerified: false,
+    },
+  },
 });
