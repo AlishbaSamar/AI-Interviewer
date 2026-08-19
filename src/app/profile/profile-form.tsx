@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { getInitials } from "@/lib/avatar";
+import { AuthError, AuthField, AuthSubmitButton } from "@/components/auth-ui";
 import { uploadAvatarAction } from "./actions";
 
 function AvatarUpload({
@@ -54,10 +55,10 @@ function AvatarUpload({
         <img
           src={imageUrl}
           alt=""
-          className="h-16 w-16 rounded-full border border-black/10 object-cover dark:border-white/10"
+          className="h-16 w-16 rounded-full border border-ink-border object-cover"
         />
       ) : (
-        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-black/10 bg-black/5 text-sm font-medium text-foreground dark:border-white/10 dark:bg-white/5">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-accent/40 bg-accent/15 font-display text-sm font-medium text-accent">
           {getInitials(name)}
         </div>
       )}
@@ -68,11 +69,11 @@ function AvatarUpload({
           accept="image/*"
           onChange={handleFileChange}
           disabled={uploading}
-          className="text-sm text-foreground/60 file:mr-3 file:rounded-md file:border file:border-black/15 file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground disabled:opacity-50 dark:file:border-white/15"
+          className="text-sm text-ink-muted file:mr-3 file:rounded-md file:border file:border-ink-border file:bg-ink-surface-2 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink-fg disabled:opacity-50"
         />
-        {uploading && <p className="mt-1 text-xs text-foreground/60">Uploading...</p>}
+        {uploading && <p className="mt-1.5 text-xs text-ink-muted">Uploading...</p>}
         {error && (
-          <p role="alert" className="mt-1 text-xs text-red-500">
+          <p role="alert" className="mt-1.5 text-xs text-red-400">
             {error}
           </p>
         )}
@@ -112,7 +113,7 @@ export function ProfileForm({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <AvatarUpload
         name={name || initialName}
         imageUrl={imageUrl}
@@ -122,36 +123,25 @@ export function ProfileForm({
         }}
       />
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-foreground">
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setStatus("idle");
-            }}
-            required
-            className="mt-1 w-full rounded-md border border-black/15 bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-foreground/40 dark:border-white/15"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthField
+          id="name"
+          label="Name"
+          type="text"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setStatus("idle");
+          }}
+          required
+        />
 
-        {status === "error" && <p className="text-sm text-red-500">{error}</p>}
-        {status === "saved" && (
-          <p className="text-sm text-green-600">Profile updated.</p>
-        )}
+        <AuthError>{status === "error" ? error : null}</AuthError>
+        {status === "saved" && <p className="text-sm text-accent">Profile updated.</p>}
 
-        <button
-          type="submit"
-          disabled={status === "saving"}
-          className="w-full rounded-md bg-foreground px-3 py-2 text-sm font-medium text-background disabled:opacity-50"
-        >
-          {status === "saving" ? "Saving..." : "Save changes"}
-        </button>
+        <AuthSubmitButton loading={status === "saving"} loadingLabel="Saving...">
+          Save changes
+        </AuthSubmitButton>
       </form>
     </div>
   );

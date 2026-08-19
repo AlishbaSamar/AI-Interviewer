@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { AuthCard, AuthHeading, AuthLayout } from "@/components/auth-ui";
 import { ProfileForm } from "./profile-form";
 
 export default async function ProfilePage() {
@@ -14,29 +15,26 @@ export default async function ProfilePage() {
   const { user } = session;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-xl border border-black/10 bg-background p-8 shadow-sm dark:border-white/10">
-        <h1 className="text-2xl font-semibold text-foreground">Your profile</h1>
-        <p className="mt-1 text-sm text-foreground/60">
-          Manage your account details.
-        </p>
+    <AuthLayout>
+      <AuthCard>
+        <AuthHeading title="Your profile" subtitle="Manage your account details." />
 
         <div className="mt-6">
-          <span className="block text-sm font-medium text-foreground">Email</span>
-          <span className="mt-1 block text-sm text-foreground/60">{user.email}</span>
+          <span className="block text-sm font-medium text-ink-fg">Email</span>
+          <span className="mt-1 block text-sm text-ink-muted">{user.email}</span>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-6">
           <ProfileForm initialName={user.name ?? ""} initialImage={user.image ?? null} />
         </div>
 
         <Link
           href="/dashboard"
-          className="mt-6 block text-center text-sm text-foreground/60 underline"
+          className="mt-6 block text-center text-sm text-ink-muted transition-colors hover:text-ink-fg"
         >
           Back to dashboard
         </Link>
-      </div>
-    </div>
+      </AuthCard>
+    </AuthLayout>
   );
 }
