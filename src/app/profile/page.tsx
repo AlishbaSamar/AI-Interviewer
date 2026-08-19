@@ -27,7 +27,7 @@ export default async function ProfilePage() {
         </div>
 
         <div className="mt-4">
-          <ProfileForm initialName={user.name ?? ""} />
+          <ProfileForm initialName={user.name ?? ""} initialImage={user.image ?? null} />
         </div>
 
         <Link
