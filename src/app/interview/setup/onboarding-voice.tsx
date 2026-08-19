@@ -10,16 +10,18 @@ import {
 } from "@/lib/onboarding-prompt";
 import { pickOnboardingPersonas } from "@/lib/persona-names";
 import type { OnboardingProfile } from "@/lib/interview-types";
-import { WaveformBars } from "@/components/waveform-bars";
+import { useLocalCamera } from "@/lib/use-local-camera";
+import { CallStage } from "@/components/call-stage";
+import { CallControls } from "@/components/call-controls";
 import { useOnboardingStore } from "./onboarding-store";
 
 type Status = "idle" | "connecting" | "connected" | "ended";
-type ActiveSpeaker = "idle" | "connecting" | "agent" | "user" | "ended";
+type ActiveSpeaker = "idle" | "connecting" | "ai" | "user" | "ended";
 
 const STATUS_TEXT: Record<ActiveSpeaker, string> = {
   idle: "Ready when you are",
   connecting: "Connecting...",
-  agent: "Speaking...",
+  ai: "Speaking...",
   user: "Listening...",
   ended: "Call ended",
 };
@@ -55,10 +57,11 @@ function parseOnboardingProfile(value: unknown): OnboardingProfile | null {
   };
 }
 
-export function OnboardingVoice() {
+export function OnboardingVoice({ userName }: { userName: string }) {
   const vapiRef = useRef<Vapi | null>(null);
   const profileRef = useRef<OnboardingProfile | null>(null);
   const pendingHangupRef = useRef(false);
+  const { videoRef, cameraOn, error: cameraError, toggleCamera } = useLocalCamera();
 
   const personas = useOnboardingStore((s) => s.personas);
   const setPersonas = useOnboardingStore((s) => s.setPersonas);
@@ -72,6 +75,7 @@ export function OnboardingVoice() {
 
   const [status, setStatus] = useState<Status>("idle");
   const [agentSpeaking, setAgentSpeaking] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [transcriptOpen, setTranscriptOpen] = useState(false);
   const [error, setError] = useState("");
 
@@ -151,6 +155,7 @@ export function OnboardingVoice() {
     setTranscript([]);
     setProfileDraft(null);
     pendingHangupRef.current = false;
+    setIsMuted(false);
     setStatus("connecting");
 
     const generatedPersonas = pickOnboardingPersonas();
@@ -194,6 +199,12 @@ export function OnboardingVoice() {
     setAgentSpeaking(false);
   }
 
+  function handleToggleMute() {
+    const next = !isMuted;
+    vapiRef.current?.setMuted(next);
+    setIsMuted(next);
+  }
+
   const canStart = (status === "idle" || status === "ended") && Boolean(publicKey);
   const canEnd = status === "connecting" || status === "connected";
 
@@ -205,7 +216,7 @@ export function OnboardingVoice() {
         : status === "ended"
           ? "ended"
           : agentSpeaking
-            ? "agent"
+            ? "ai"
             : "user";
 
   return (
@@ -219,44 +230,41 @@ export function OnboardingVoice() {
           : "Start the call and tell our onboarding assistant what you'd like to practice."}
       </p>
 
-      <div className="mt-6 flex flex-col items-center rounded-lg border border-ink-border bg-ink-surface-2 px-4 py-8">
-        <div className="relative flex h-28 w-full max-w-xs items-center justify-center">
-          <WaveformBars
-            count={22}
-            seed={11}
-            minHeight={8}
-            active={status === "connected" || status === "connecting"}
-            sync={status === "connecting"}
-            speed={status === "connecting" ? 2.6 : 0.6}
-            flatHeight={10}
-            className="flex h-20 w-full items-end justify-center gap-1 px-2"
-            barClassName={`min-w-0 flex-1 max-w-1.5 rounded-full transition-colors motion-safe:duration-300 ${
-              activeSpeaker === "agent"
-                ? "bg-accent"
-                : activeSpeaker === "user"
-                  ? "bg-accent-violet"
-                  : "bg-ink-border"
-            }`}
-          />
-        </div>
-        <p className="mt-4 text-sm font-medium text-ink-fg">{STATUS_TEXT[activeSpeaker]}</p>
+      <div className="mt-6 flex flex-col items-center gap-4">
+        <CallStage
+          aiName={personas?.agentName ?? "Assistant"}
+          userName={userName}
+          activeSpeaker={activeSpeaker}
+          cameraOn={cameraOn}
+          videoRef={videoRef}
+        />
 
-        {(error || !publicKey) && (
-          <p className="mt-3 max-w-xs text-center text-xs text-red-400">
-            {error || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
+        <p className="text-sm font-medium text-ink-fg">{STATUS_TEXT[activeSpeaker]}</p>
+
+        {(error || !publicKey || cameraError) && (
+          <p className="max-w-xs text-center text-xs text-red-400">
+            {error || cameraError || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={canEnd ? handleEndCall : () => void handleStartCall()}
-          disabled={!canStart && !canEnd}
-          className={`mt-6 rounded-full px-8 py-3 text-sm font-semibold transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 ${
-            canEnd ? "bg-red-500 text-white" : "bg-accent text-ink"
-          }`}
-        >
-          {canEnd ? "End Call" : status === "ended" ? "Call Again" : "Start Call"}
-        </button>
+        {canEnd ? (
+          <CallControls
+            isMuted={isMuted}
+            onToggleMute={handleToggleMute}
+            cameraOn={cameraOn}
+            onToggleCamera={() => void toggleCamera()}
+            onEndCall={handleEndCall}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleStartCall()}
+            disabled={!canStart}
+            className="rounded-full bg-accent px-8 py-3 text-sm font-semibold text-ink transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+          >
+            {status === "ended" ? "Call Again" : "Start Call"}
+          </button>
+        )}
       </div>
 
       {status === "ended" && !profileDraft && (

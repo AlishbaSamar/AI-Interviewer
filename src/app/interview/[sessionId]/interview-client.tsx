@@ -7,7 +7,9 @@ import type { CreateAssistantDTO } from "@vapi-ai/web/dist/api";
 import type { InterviewSession } from "@/generated/prisma/client";
 import { buildInterviewPrompt, buildProgressTool, PROGRESS_TOOL_NAME } from "@/lib/interview-prompt";
 import { PARAMETER_LABELS, type InterviewFeedback } from "@/lib/interview-types";
-import { WaveformBars } from "@/components/waveform-bars";
+import { useLocalCamera } from "@/lib/use-local-camera";
+import { CallStage } from "@/components/call-stage";
+import { CallControls } from "@/components/call-controls";
 import {
   getInterviewFeedback,
   saveInterviewTranscript,
@@ -31,8 +33,15 @@ const STATUS_TEXT: Record<ActiveSpeaker, string> = {
   ended: "Call ended",
 };
 
-export function InterviewClient({ session }: { session: InterviewSession }) {
+export function InterviewClient({
+  session,
+  userName,
+}: {
+  session: InterviewSession;
+  userName: string;
+}) {
   const vapiRef = useRef<Vapi | null>(null);
+  const { videoRef, cameraOn, error: cameraError, toggleCamera } = useLocalCamera();
   const transcriptRef = useRef<TranscriptLine[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [assistantSpeaking, setAssistantSpeaking] = useState(false);
@@ -236,14 +245,6 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
             ? "ai"
             : "user";
 
-  function handlePrimaryAction() {
-    if (canEnd) {
-      handleEndCall();
-    } else if (canStart) {
-      void handleStartCall();
-    }
-  }
-
   return (
     <div className="flex min-h-screen flex-col bg-ink text-ink-fg">
       <header className="px-6 pt-8">
@@ -264,7 +265,13 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center px-6 pb-16">
         {/* Central focus area - the emotional center of the screen */}
         <div className="flex w-full flex-1 flex-col items-center justify-center py-10">
-          <WaveformStage activeSpeaker={activeSpeaker} />
+          <CallStage
+            aiName={session.interviewerName ?? "Interviewer"}
+            userName={userName}
+            activeSpeaker={activeSpeaker}
+            cameraOn={cameraOn}
+            videoRef={videoRef}
+          />
 
           <p className="mt-8 text-center font-display text-2xl font-medium tracking-tight text-ink-fg sm:text-3xl">
             {STATUS_TEXT[activeSpeaker]}
@@ -279,33 +286,29 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
             )}
           </div>
 
-          {(error || !publicKey) && (
+          {(error || !publicKey || cameraError) && (
             <p className="mt-4 max-w-sm text-center text-sm text-red-400">
-              {error || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
+              {error || cameraError || "NEXT_PUBLIC_VAPI_PUBLIC_KEY is not set."}
             </p>
           )}
 
           <div className="mt-10 flex flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={handlePrimaryAction}
-              disabled={!canStart && !canEnd}
-              className={`rounded-full px-10 py-4 text-base font-semibold transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 ${
-                canEnd
-                  ? "bg-red-500 text-white"
-                  : "bg-accent text-ink"
-              }`}
-            >
-              {canEnd ? "End Call" : "Start Call"}
-            </button>
-
-            {status === "connected" && (
+            {canEnd ? (
+              <CallControls
+                isMuted={isMuted}
+                onToggleMute={handleTogglePause}
+                cameraOn={cameraOn}
+                onToggleCamera={() => void toggleCamera()}
+                onEndCall={handleEndCall}
+              />
+            ) : (
               <button
                 type="button"
-                onClick={handleTogglePause}
-                className="rounded-full border border-ink-border px-4 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:text-ink-fg"
+                onClick={() => void handleStartCall()}
+                disabled={!canStart}
+                className="rounded-full bg-accent px-10 py-4 text-base font-semibold text-ink transition-transform hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
               >
-                {isMuted ? "Unmute mic" : "Mute mic"}
+                Start Call
               </button>
             )}
           </div>
@@ -461,56 +464,6 @@ export function InterviewClient({ session }: { session: InterviewSession }) {
           )}
         </div>
       </main>
-    </div>
-  );
-}
-
-function WaveformStage({ activeSpeaker }: { activeSpeaker: ActiveSpeaker }) {
-  const config = {
-    idle: { active: false, sync: false, speed: 1, barClassName: "bg-ink-border", glow: "" },
-    connecting: {
-      active: true,
-      sync: true,
-      speed: 2.6,
-      barClassName: "bg-accent/45",
-      glow: "bg-accent/10",
-    },
-    ai: {
-      active: true,
-      sync: false,
-      speed: 0.6,
-      barClassName: "bg-accent",
-      glow: "bg-accent/20",
-    },
-    user: {
-      active: true,
-      sync: false,
-      speed: 0.6,
-      barClassName: "bg-accent-violet",
-      glow: "bg-accent-violet/20",
-    },
-    ended: { active: false, sync: false, speed: 1, barClassName: "bg-ink-border", glow: "" },
-  }[activeSpeaker];
-
-  return (
-    <div className="relative flex h-56 w-full max-w-md items-center justify-center sm:h-64">
-      {config.glow && (
-        <div
-          aria-hidden="true"
-          className={`absolute h-40 w-40 rounded-full blur-3xl transition-colors motion-safe:duration-500 ${config.glow}`}
-        />
-      )}
-      <WaveformBars
-        count={28}
-        seed={7}
-        minHeight={10}
-        active={config.active}
-        sync={config.sync}
-        speed={config.speed}
-        flatHeight={12}
-        className="relative flex h-32 w-full items-end justify-center gap-1.5 px-2 sm:h-40"
-        barClassName={`min-w-0 flex-1 max-w-2 rounded-full transition-colors motion-safe:duration-300 ${config.barClassName}`}
-      />
     </div>
   );
 }

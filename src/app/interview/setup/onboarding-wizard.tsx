@@ -9,7 +9,7 @@ const STEPS: { key: WizardStep; label: string }[] = [
   { key: "confirm", label: "Review & start" },
 ];
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ userName }: { userName: string }) {
   const step = useOnboardingStore((s) => s.step);
   const profileDraft = useOnboardingStore((s) => s.profileDraft);
 
@@ -29,7 +29,7 @@ export function OnboardingWizard() {
         Step {stepIndex + 1} of {STEPS.length} · {STEPS[stepIndex].label}
       </p>
 
-      {step === "voice" && <OnboardingVoice />}
+      {step === "voice" && <OnboardingVoice userName={userName} />}
 
       {step === "confirm" && profileDraft && <OnboardingConfirm />}
     </div>

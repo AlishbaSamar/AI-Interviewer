@@ -31,5 +31,10 @@ export default async function InterviewSessionPage(
     redirect("/dashboard");
   }
 
-  return <InterviewClient session={interviewSession} />;
+  return (
+    <InterviewClient
+      session={interviewSession}
+      userName={session.user.name || session.user.email}
+    />
+  );
 }
