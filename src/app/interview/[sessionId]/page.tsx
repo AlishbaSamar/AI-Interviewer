@@ -35,6 +35,7 @@ export default async function InterviewSessionPage(
     <InterviewClient
       session={interviewSession}
       userName={session.user.name || session.user.email}
+      userImage={session.user.image ?? null}
     />
   );
 }

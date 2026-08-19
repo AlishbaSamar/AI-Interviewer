@@ -59,12 +59,14 @@ function AvatarCircle({
 export function CallStage({
   aiName,
   userName,
+  userImage,
   activeSpeaker,
   cameraOn,
   videoRef,
 }: {
   aiName: string;
   userName: string;
+  userImage?: string | null;
   activeSpeaker: CallActiveSpeaker;
   cameraOn: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -111,7 +113,12 @@ export function CallStage({
           />
         ) : (
           <AvatarCircle tone="violet" pulsing={activeSpeaker === "user"}>
-            {getInitials(userName)}
+            {userImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={userImage} alt="" className="h-full w-full rounded-full object-cover" />
+            ) : (
+              getInitials(userName)
+            )}
           </AvatarCircle>
         )}
         <NameTag>{userName}</NameTag>

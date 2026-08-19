@@ -32,9 +32,6 @@ export function useLocalCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setCameraOn(true);
     } catch (err) {
       console.error("[use-local-camera] failed to start camera", err);
@@ -42,6 +39,15 @@ export function useLocalCamera() {
       setCameraOn(false);
     }
   }, [cameraOn, stopStream]);
+
+  // The <video> element only mounts once cameraOn flips true, so the ref is
+  // still null at the point toggleCamera() gets the stream above - attach it
+  // here instead, after that render has actually committed the element.
+  useEffect(() => {
+    if (cameraOn && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [cameraOn]);
 
   useEffect(() => stopStream, [stopStream]);
 

@@ -57,7 +57,13 @@ function parseOnboardingProfile(value: unknown): OnboardingProfile | null {
   };
 }
 
-export function OnboardingVoice({ userName }: { userName: string }) {
+export function OnboardingVoice({
+  userName,
+  userImage,
+}: {
+  userName: string;
+  userImage: string | null;
+}) {
   const vapiRef = useRef<Vapi | null>(null);
   const profileRef = useRef<OnboardingProfile | null>(null);
   const pendingHangupRef = useRef(false);
@@ -234,6 +240,7 @@ export function OnboardingVoice({ userName }: { userName: string }) {
         <CallStage
           aiName={personas?.agentName ?? "Assistant"}
           userName={userName}
+          userImage={userImage}
           activeSpeaker={activeSpeaker}
           cameraOn={cameraOn}
           videoRef={videoRef}

@@ -13,7 +13,10 @@ export default async function InterviewSetupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ink px-4 py-12">
       <div className="w-full max-w-lg rounded-2xl border border-ink-border bg-ink-surface p-6 sm:p-8">
-        <OnboardingWizard userName={session.user.name || session.user.email} />
+        <OnboardingWizard
+          userName={session.user.name || session.user.email}
+          userImage={session.user.image ?? null}
+        />
       </div>
     </div>
   );

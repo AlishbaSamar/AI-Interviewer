@@ -37,9 +37,11 @@ const STATUS_TEXT: Record<ActiveSpeaker, string> = {
 export function InterviewClient({
   session,
   userName,
+  userImage,
 }: {
   session: InterviewSession;
   userName: string;
+  userImage: string | null;
 }) {
   const vapiRef = useRef<Vapi | null>(null);
   const { videoRef, cameraOn, error: cameraError, toggleCamera } = useLocalCamera();
@@ -269,6 +271,7 @@ export function InterviewClient({
           <CallStage
             aiName={session.interviewerName ?? "Interviewer"}
             userName={userName}
+            userImage={userImage}
             activeSpeaker={activeSpeaker}
             cameraOn={cameraOn}
             videoRef={videoRef}
