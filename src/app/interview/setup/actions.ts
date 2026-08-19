@@ -21,6 +21,7 @@ export async function createInterviewSession(formData: FormData) {
   const techStack = nullableString(formData.get("techStack"));
   const targetRole = nullableString(formData.get("targetRole"));
   const resumeUrl = nullableString(formData.get("resumeUrl"));
+  const interviewerName = nullableString(formData.get("interviewerName"));
 
   const interviewSession = await prisma.interviewSession.create({
     data: {
@@ -31,6 +32,7 @@ export async function createInterviewSession(formData: FormData) {
       techStack,
       targetRole,
       resumeUrl,
+      interviewerName,
       numQuestions,
       difficulty,
       mode,

@@ -1,22 +1,17 @@
 "use client";
 
 import { useOnboardingStore, type WizardStep } from "./onboarding-store";
-import { OnboardingChat } from "./onboarding-chat";
+import { OnboardingVoice } from "./onboarding-voice";
 import { OnboardingConfirm } from "./onboarding-confirm";
-import { SetupForm } from "./setup-form";
-import { createInterviewSession } from "./actions";
 
 const STEPS: { key: WizardStep; label: string }[] = [
-  { key: "chat", label: "Tell us about it" },
-  { key: "confirm", label: "Confirm details" },
-  { key: "picker", label: "Set up session" },
+  { key: "voice", label: "Talk to our onboarding assistant" },
+  { key: "confirm", label: "Review & start" },
 ];
 
 export function OnboardingWizard() {
   const step = useOnboardingStore((s) => s.step);
   const profileDraft = useOnboardingStore((s) => s.profileDraft);
-  const resumeUrl = useOnboardingStore((s) => s.resumeUrl);
-  const setStep = useOnboardingStore((s) => s.setStep);
 
   const stepIndex = STEPS.findIndex((s) => s.key === step);
 
@@ -34,18 +29,9 @@ export function OnboardingWizard() {
         Step {stepIndex + 1} of {STEPS.length} · {STEPS[stepIndex].label}
       </p>
 
-      {step === "chat" && <OnboardingChat />}
+      {step === "voice" && <OnboardingVoice />}
 
       {step === "confirm" && profileDraft && <OnboardingConfirm />}
-
-      {step === "picker" && profileDraft && (
-        <SetupForm
-          action={createInterviewSession}
-          profile={profileDraft}
-          resumeUrl={resumeUrl}
-          onBack={() => setStep("confirm")}
-        />
-      )}
     </div>
   );
 }

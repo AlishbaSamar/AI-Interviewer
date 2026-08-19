@@ -1,26 +1,33 @@
 import { create } from "zustand";
-import { INTERVIEW_TYPES } from "@/lib/interview-options";
-import type { OnboardingChatMessage, ProfileDraft } from "@/lib/onboarding-chat";
+import { DIFFICULTIES, INTERVIEW_TYPES, MODES, QUESTION_COUNTS } from "@/lib/interview-options";
+import type { OnboardingPersonas } from "@/lib/persona-names";
+import type { OnboardingProfile, TranscriptLine } from "@/lib/interview-types";
 
-export type WizardStep = "chat" | "confirm" | "picker";
+export type WizardStep = "voice" | "confirm";
 
 type OnboardingState = {
   step: WizardStep;
-  messages: OnboardingChatMessage[];
-  profileDraft: ProfileDraft | null;
+  personas: OnboardingPersonas | null;
+  transcript: TranscriptLine[];
+  profileDraft: OnboardingProfile | null;
   resumeUrl: string | null;
   setStep: (step: WizardStep) => void;
-  pushMessage: (message: OnboardingChatMessage) => void;
-  setProfileDraft: (draft: ProfileDraft) => void;
-  updateProfileDraft: (draft: ProfileDraft) => void;
+  setPersonas: (personas: OnboardingPersonas) => void;
+  setTranscript: (transcript: TranscriptLine[]) => void;
+  appendTranscriptLine: (line: TranscriptLine) => void;
+  setProfileDraft: (draft: OnboardingProfile | null) => void;
   setResumeUrl: (url: string | null) => void;
   skipToConfirm: () => void;
   reset: () => void;
 };
 
-const initialState: Pick<OnboardingState, "step" | "messages" | "profileDraft" | "resumeUrl"> = {
-  step: "chat",
-  messages: [],
+const initialState: Pick<
+  OnboardingState,
+  "step" | "personas" | "transcript" | "profileDraft" | "resumeUrl"
+> = {
+  step: "voice",
+  personas: null,
+  transcript: [],
   profileDraft: null,
   resumeUrl: null,
 };
@@ -28,9 +35,10 @@ const initialState: Pick<OnboardingState, "step" | "messages" | "profileDraft" |
 export const useOnboardingStore = create<OnboardingState>((set) => ({
   ...initialState,
   setStep: (step) => set({ step }),
-  pushMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
-  setProfileDraft: (draft) => set({ profileDraft: draft, step: "confirm" }),
-  updateProfileDraft: (draft) => set({ profileDraft: draft }),
+  setPersonas: (personas) => set({ personas }),
+  setTranscript: (transcript) => set({ transcript }),
+  appendTranscriptLine: (line) => set((s) => ({ transcript: [...s.transcript, line] })),
+  setProfileDraft: (draft) => set({ profileDraft: draft }),
   setResumeUrl: (url) => set({ resumeUrl: url }),
   skipToConfirm: () =>
     set({
@@ -40,6 +48,9 @@ export const useOnboardingStore = create<OnboardingState>((set) => ({
         experienceLevel: null,
         techStack: null,
         targetRole: null,
+        numQuestions: QUESTION_COUNTS[1],
+        difficulty: DIFFICULTIES[1],
+        mode: MODES[0].value,
       },
       step: "confirm",
     }),

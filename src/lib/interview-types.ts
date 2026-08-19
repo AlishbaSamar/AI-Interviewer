@@ -3,6 +3,17 @@ export type TranscriptLine = {
   text: string;
 };
 
+export type OnboardingProfile = {
+  interviewType: string;
+  domain: string | null;
+  experienceLevel: string | null;
+  techStack: string | null;
+  targetRole: string | null;
+  numQuestions: number;
+  difficulty: string;
+  mode: string;
+};
+
 export type InterviewFeedbackParameters = {
   technicalAccuracy: number;
   communication: number;

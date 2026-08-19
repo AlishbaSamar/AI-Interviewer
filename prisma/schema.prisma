@@ -84,6 +84,7 @@ model InterviewSession {
   mode            String
   status          String    @default("not_started")
   resumeUrl       String?
+  interviewerName String?
   transcript      Json?
   feedback        Json?
   createdAt       DateTime  @default(now())
