@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { InterviewSession } from "@/generated/prisma/client";
 import { isValidFeedback } from "@/lib/evaluate-interview";
 import { WaveformBars } from "@/components/waveform-bars";
+import { retakeInterviewSession } from "@/app/interview/[sessionId]/actions";
 import { SessionCompare } from "./session-compare";
 
 export function formatDate(date: Date): string {
@@ -160,13 +161,23 @@ export function SessionList({ sessions }: { sessions: InterviewSession[] }) {
                   >
                     {isSelected ? "Selected" : "Compare"}
                   </button>
-                  <a
-                    href={`/interview/${session.id}/report`}
-                    download={`interview-report-${session.id}.pdf`}
-                    className="text-xs font-medium text-ink-muted hover:text-ink-fg"
-                  >
-                    Report
-                  </a>
+                  <div className="flex items-center gap-3">
+                    <form action={retakeInterviewSession.bind(null, session.id)}>
+                      <button
+                        type="submit"
+                        className="text-xs font-medium text-ink-muted hover:text-ink-fg"
+                      >
+                        Retake
+                      </button>
+                    </form>
+                    <a
+                      href={`/interview/${session.id}/report`}
+                      download={`interview-report-${session.id}.pdf`}
+                      className="text-xs font-medium text-ink-muted hover:text-ink-fg"
+                    >
+                      Report
+                    </a>
+                  </div>
                 </div>
               )}
             </div>

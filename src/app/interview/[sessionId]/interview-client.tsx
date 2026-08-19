@@ -12,6 +12,7 @@ import { CallStage } from "@/components/call-stage";
 import { CallControls } from "@/components/call-controls";
 import {
   getInterviewFeedback,
+  retakeInterviewSession,
   saveInterviewTranscript,
   type TranscriptLine,
 } from "./actions";
@@ -416,6 +417,15 @@ export function InterviewClient({
             >
               Download PDF Report
             </a>
+
+            <form action={retakeInterviewSession.bind(null, session.id)}>
+              <button
+                type="submit"
+                className="mt-3 block w-full rounded-md bg-accent px-3 py-2.5 text-center text-sm font-semibold text-ink transition-transform hover:scale-[1.01]"
+              >
+                Retake Interview
+              </button>
+            </form>
           </div>
         )}
 

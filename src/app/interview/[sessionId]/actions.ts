@@ -1,6 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { evaluateInterview, isValidFeedback } from "@/lib/evaluate-interview";
@@ -94,4 +95,45 @@ export async function getInterviewFeedback(sessionId: string): Promise<GetFeedba
     const message = err instanceof Error ? err.message : "Failed to generate feedback.";
     return { success: false, error: message };
   }
+}
+
+/**
+ * Starts a fresh attempt with the same settings as an existing session.
+ * The original session (transcript, score, history) is left untouched -
+ * this creates a new row rather than resetting the old one, so past
+ * attempts keep showing up in the dashboard trend/compare views.
+ */
+export async function retakeInterviewSession(sessionId: string): Promise<void> {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const original = await prisma.interviewSession.findUnique({
+    where: { id: sessionId },
+  });
+
+  if (!original || original.userId !== session.user.id) {
+    redirect("/dashboard");
+  }
+
+  const retake = await prisma.interviewSession.create({
+    data: {
+      userId: session.user.id,
+      interviewType: original.interviewType,
+      domain: original.domain,
+      experienceLevel: original.experienceLevel,
+      techStack: original.techStack,
+      targetRole: original.targetRole,
+      resumeUrl: original.resumeUrl,
+      interviewerName: original.interviewerName,
+      numQuestions: original.numQuestions,
+      difficulty: original.difficulty,
+      mode: original.mode,
+      status: "not_started",
+    },
+  });
+
+  redirect(`/interview/${retake.id}`);
 }
